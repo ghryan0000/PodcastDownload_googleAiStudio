@@ -1,0 +1,5 @@
+{
+  "name": "Download Podcast audio & Script",
+  "description": "An intelligent tool that scrapes webpages, uses Gemini AI to analyze source code, extracts hidden MP3 stream URLs, and enables direct audio downloads.",
+  "requestFramePermissions": []
+}
