@@ -1,6 +1,9 @@
 import { GoogleGenAI, Type } from "@google/genai";
 
-const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
+const getAI = () => {
+  const key = process.env.API_KEY || process.env.GEMINI_API_KEY || "";
+  return new GoogleGenAI({ apiKey: key });
+};
 
 /**
  * Uses Gemini to analyze HTML source code and locate the 'streamURL'.
@@ -13,7 +16,7 @@ export async function extractStreamUrlFromSource(sourceCode: string): Promise<st
   const truncatedSource = sourceCode.length > 500000 ? sourceCode.substring(0, 500000) : sourceCode;
 
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: 'gemini-1.5-flash',
       contents: `
         You are a code extraction expert. 
@@ -50,7 +53,7 @@ export async function extractStreamUrlFromSource(sourceCode: string): Promise<st
     if (result.found && result.url) {
       return result.url;
     }
-    
+
     return null;
 
   } catch (error) {
@@ -64,7 +67,7 @@ export async function extractStreamUrlFromSource(sourceCode: string): Promise<st
  */
 export async function transcribeAudio(base64Audio: string): Promise<string> {
   try {
-    const response = await ai.models.generateContent({
+    const response = await getAI().models.generateContent({
       model: 'gemini-2.0-flash-exp',
       contents: {
         parts: [
@@ -89,7 +92,7 @@ export async function transcribeAudio(base64Audio: string): Promise<string> {
         ]
       }
     });
-    
+
     return response.text || "No transcription available.";
   } catch (error) {
     console.error("Transcription Error:", error);
