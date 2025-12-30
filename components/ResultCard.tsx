@@ -13,7 +13,7 @@ interface ResultCardProps {
 
 const ResultCard: React.FC<ResultCardProps> = ({ streamUrl, onReset, isUpload = false, fileName }) => {
   const [isDownloading, setIsDownloading] = useState(false);
-  
+
   // Audio Player State
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -94,12 +94,20 @@ const ResultCard: React.FC<ResultCardProps> = ({ streamUrl, onReset, isUpload = 
   const handleTranscribe = async () => {
     setIsTranscribing(true);
     try {
+      // Basic check for very large streams if possible (though blob fetch happens first)
+      // For simplicity, we'll check the base64 length or just handle the error from geminiService
       const base64 = await fetchAudioAsBase64(streamUrl);
+
+      // Rough check: 20MB in base64 is ~27MB. Gemini has limits on inline data.
+      if (base64.length > 25000000) {
+        throw new Error("The audio file is too large for the current Gemini transcription limit (~20MB).");
+      }
+
       const text = await transcribeAudio(base64);
       setTranscription(text);
     } catch (error) {
       console.error(error);
-      alert("Transcription failed. The file may be too large or not an MP3.");
+      alert(error instanceof Error ? error.message : "Transcription failed. The file may be too large or not an MP3.");
     } finally {
       setIsTranscribing(false);
     }
@@ -111,24 +119,24 @@ const ResultCard: React.FC<ResultCardProps> = ({ streamUrl, onReset, isUpload = 
 
     try {
       const paragraphTexts = transcription.split(/\n+/).filter(line => line.trim().length > 0);
-      
+
       const docChildren = [
         new Paragraph({
           text: "Audio Transcription",
           heading: HeadingLevel.HEADING_1,
-          spacing: { after: 400 }, 
+          spacing: { after: 400 },
         }),
         ...paragraphTexts.map(text => new Paragraph({
           children: [
             new TextRun({
               text: text,
-              size: 24, 
+              size: 24,
             })
           ],
-          spacing: { 
-            after: 200, 
-            line: 360 
-          } 
+          spacing: {
+            after: 200,
+            line: 360
+          }
         })),
         new Paragraph({
           children: [
@@ -178,7 +186,7 @@ const ResultCard: React.FC<ResultCardProps> = ({ streamUrl, onReset, isUpload = 
       </div>
 
       <div className="p-6 space-y-6">
-        
+
         {/* Info Display */}
         <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 text-sm text-gray-600 break-all flex items-center gap-3">
           {isUpload ? (
@@ -196,18 +204,18 @@ const ResultCard: React.FC<ResultCardProps> = ({ streamUrl, onReset, isUpload = 
         {/* Audio Player Interface */}
         <div className="bg-white rounded-2xl p-6 border border-gray-100 shadow-lg shadow-gray-100/50">
           <div className="flex items-center justify-between mb-4">
-             <span className="text-xs text-rose-500 uppercase tracking-widest font-bold flex items-center gap-2">
-               <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-rose-500 animate-pulse' : 'bg-gray-300'}`}></div>
-               Preview
-             </span>
-             <span className="text-xs font-mono font-medium text-gray-400">
-                {formatTime(currentTime)} / {formatTime(duration)}
-             </span>
+            <span className="text-xs text-rose-500 uppercase tracking-widest font-bold flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${isPlaying ? 'bg-rose-500 animate-pulse' : 'bg-gray-300'}`}></div>
+              Preview
+            </span>
+            <span className="text-xs font-mono font-medium text-gray-400">
+              {formatTime(currentTime)} / {formatTime(duration)}
+            </span>
           </div>
 
-          <audio 
-            ref={audioRef} 
-            src={streamUrl} 
+          <audio
+            ref={audioRef}
+            src={streamUrl}
             onTimeUpdate={handleTimeUpdate}
             onLoadedMetadata={handleLoadedMetadata}
             onEnded={() => setIsPlaying(false)}
@@ -219,26 +227,26 @@ const ResultCard: React.FC<ResultCardProps> = ({ streamUrl, onReset, isUpload = 
 
           {/* Progress Bar */}
           <div className="mb-6 relative group">
-             <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-gray-100 rounded-full -translate-y-1/2"></div>
-             <div 
-                className="absolute top-1/2 left-0 h-1.5 bg-rose-500 rounded-full -translate-y-1/2 pointer-events-none transition-all duration-100" 
-                style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
-             ></div>
-             <input 
-               type="range" 
-               min={0} 
-               max={duration || 100} 
-               value={currentTime} 
-               onChange={handleSeek} 
-               className="relative w-full h-4 opacity-0 cursor-pointer z-10"
-             />
+            <div className="absolute top-1/2 left-0 right-0 h-1.5 bg-gray-100 rounded-full -translate-y-1/2"></div>
+            <div
+              className="absolute top-1/2 left-0 h-1.5 bg-rose-500 rounded-full -translate-y-1/2 pointer-events-none transition-all duration-100"
+              style={{ width: `${(currentTime / (duration || 1)) * 100}%` }}
+            ></div>
+            <input
+              type="range"
+              min={0}
+              max={duration || 100}
+              value={currentTime}
+              onChange={handleSeek}
+              className="relative w-full h-4 opacity-0 cursor-pointer z-10"
+            />
           </div>
 
           {/* Playback Controls */}
           <div className="flex items-center justify-between px-2">
             {/* Speed Toggle */}
-            <button 
-              onClick={cycleSpeed} 
+            <button
+              onClick={cycleSpeed}
               className="flex items-center gap-1.5 text-xs font-bold text-gray-400 hover:text-rose-500 transition-colors w-16 group"
               title="Playback Speed"
             >
@@ -248,32 +256,32 @@ const ResultCard: React.FC<ResultCardProps> = ({ streamUrl, onReset, isUpload = 
 
             {/* Main Transport */}
             <div className="flex items-center gap-8">
-              <button 
-                onClick={() => skip(-10)} 
+              <button
+                onClick={() => skip(-10)}
                 className="text-gray-400 hover:text-gray-800 p-2 rounded-full transition-colors"
                 title="Rewind 10s"
               >
-                  <RotateCcw className="w-6 h-6" />
-              </button>
-              
-              <button 
-                onClick={togglePlay} 
-                className="bg-rose-500 hover:bg-rose-600 text-white p-4 rounded-full shadow-xl shadow-rose-500/30 transition-all hover:scale-105 active:scale-95"
-              >
-                 {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current pl-1" />}
+                <RotateCcw className="w-6 h-6" />
               </button>
 
-              <button 
-                onClick={() => skip(10)} 
+              <button
+                onClick={togglePlay}
+                className="bg-rose-500 hover:bg-rose-600 text-white p-4 rounded-full shadow-xl shadow-rose-500/30 transition-all hover:scale-105 active:scale-95"
+              >
+                {isPlaying ? <Pause className="w-8 h-8 fill-current" /> : <Play className="w-8 h-8 fill-current pl-1" />}
+              </button>
+
+              <button
+                onClick={() => skip(10)}
                 className="text-gray-400 hover:text-gray-800 p-2 rounded-full transition-colors"
                 title="Forward 10s"
               >
-                  <RotateCw className="w-6 h-6" />
+                <RotateCw className="w-6 h-6" />
               </button>
             </div>
 
             {/* Placeholder to balance layout */}
-            <div className="w-16"></div> 
+            <div className="w-16"></div>
           </div>
         </div>
 
@@ -283,8 +291,8 @@ const ResultCard: React.FC<ResultCardProps> = ({ streamUrl, onReset, isUpload = 
             onClick={handleDownload}
             disabled={isDownloading}
             className={`flex-1 flex items-center justify-center gap-2 py-3.5 px-6 rounded-xl font-bold text-white transition-all shadow-lg
-              ${isDownloading 
-                ? 'bg-rose-400 cursor-not-allowed shadow-none' 
+              ${isDownloading
+                ? 'bg-rose-400 cursor-not-allowed shadow-none'
                 : 'bg-rose-500 hover:bg-rose-600 shadow-rose-500/30 hover:shadow-rose-500/40 active:scale-95'}`}
           >
             {isDownloading ? (
@@ -299,7 +307,7 @@ const ResultCard: React.FC<ResultCardProps> = ({ streamUrl, onReset, isUpload = 
               </>
             )}
           </button>
-          
+
           {!isUpload && (
             <a
               href={streamUrl}
@@ -315,64 +323,64 @@ const ResultCard: React.FC<ResultCardProps> = ({ streamUrl, onReset, isUpload = 
 
         {/* Transcription Section */}
         <div className="border-t border-gray-100 pt-8 mt-2">
-           <div className="flex items-center justify-between mb-5">
-             <h4 className="text-gray-900 font-bold flex items-center gap-2 text-lg">
-               <div className="bg-purple-100 p-1.5 rounded-lg">
-                  <FileText className="w-5 h-5 text-purple-600" />
-               </div>
-               Transcription
-             </h4>
-             {!transcription && !isTranscribing && (
-               <button 
-                 onClick={handleTranscribe}
-                 className="text-xs font-semibold bg-purple-50 text-purple-600 border border-purple-100 px-4 py-2 rounded-full hover:bg-purple-100 transition-colors flex items-center gap-1.5 shadow-sm"
-               >
-                 Generate Speech-to-text (AI)
-               </button>
-             )}
-           </div>
+          <div className="flex items-center justify-between mb-5">
+            <h4 className="text-gray-900 font-bold flex items-center gap-2 text-lg">
+              <div className="bg-purple-100 p-1.5 rounded-lg">
+                <FileText className="w-5 h-5 text-purple-600" />
+              </div>
+              Transcription
+            </h4>
+            {!transcription && !isTranscribing && (
+              <button
+                onClick={handleTranscribe}
+                className="text-xs font-semibold bg-purple-50 text-purple-600 border border-purple-100 px-4 py-2 rounded-full hover:bg-purple-100 transition-colors flex items-center gap-1.5 shadow-sm"
+              >
+                Generate Speech-to-text (AI)
+              </button>
+            )}
+          </div>
 
-           {isTranscribing && (
-             <div className="bg-gray-50 rounded-xl p-8 flex flex-col items-center justify-center text-gray-500 gap-3 border border-gray-100">
-               <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-               <span className="text-sm font-medium">Gemini is listening...</span>
-             </div>
-           )}
+          {isTranscribing && (
+            <div className="bg-gray-50 rounded-xl p-8 flex flex-col items-center justify-center text-gray-500 gap-3 border border-gray-100">
+              <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+              <span className="text-sm font-medium">Gemini is listening...</span>
+            </div>
+          )}
 
-           {transcription && (
-             <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
-               <div className="relative">
-                 <textarea
-                   readOnly
-                   value={transcription}
-                   className="w-full h-48 bg-white border border-gray-200 rounded-xl p-4 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-y leading-relaxed shadow-sm"
-                 />
-                 <div className="absolute top-2 right-2 px-2 py-1 bg-gray-100 rounded text-xs text-gray-500 font-medium pointer-events-none">
-                    Preview
-                 </div>
-               </div>
-               
-               <button
-                 onClick={handleDownloadTranscript}
-                 disabled={isGeneratingDoc}
-                 className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-900 hover:bg-black text-white font-semibold transition-all shadow-lg shadow-gray-200 active:scale-95 disabled:opacity-70 disabled:scale-100"
-               >
-                 {isGeneratingDoc ? (
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                 ) : (
-                    <FileDown className="w-4 h-4" />
-                 )}
-                 Download Word Doc (.docx)
-               </button>
-             </div>
-           )}
+          {transcription && (
+            <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-500">
+              <div className="relative">
+                <textarea
+                  readOnly
+                  value={transcription}
+                  className="w-full h-48 bg-white border border-gray-200 rounded-xl p-4 text-sm text-gray-700 focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 resize-y leading-relaxed shadow-sm"
+                />
+                <div className="absolute top-2 right-2 px-2 py-1 bg-gray-100 rounded text-xs text-gray-500 font-medium pointer-events-none">
+                  Preview
+                </div>
+              </div>
+
+              <button
+                onClick={handleDownloadTranscript}
+                disabled={isGeneratingDoc}
+                className="w-full flex items-center justify-center gap-2 py-3 rounded-xl bg-gray-900 hover:bg-black text-white font-semibold transition-all shadow-lg shadow-gray-200 active:scale-95 disabled:opacity-70 disabled:scale-100"
+              >
+                {isGeneratingDoc ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <FileDown className="w-4 h-4" />
+                )}
+                Download Word Doc (.docx)
+              </button>
+            </div>
+          )}
         </div>
 
         {!isUpload && (
           <div className="flex items-start gap-3 p-4 bg-orange-50 border border-orange-100 rounded-xl text-xs text-orange-800">
             <AlertTriangle className="w-5 h-5 shrink-0 text-orange-500" />
             <p className="leading-relaxed">
-              <strong>Note:</strong> If the download fails, the server might enforce strict CORS policies. 
+              <strong>Note:</strong> If the download fails, the server might enforce strict CORS policies.
               Try the "Open Link" button to view the file in a new tab, then save it from there.
             </p>
           </div>
